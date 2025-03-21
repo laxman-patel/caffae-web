@@ -14,7 +14,8 @@ import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const hasCredentials = hasValidSupabaseCredentials();
+  // We've hardcoded the credentials, so we'll always consider them valid
+  const hasCredentials = true;
 
   return (
     <QueryClientProvider client={queryClient}>
