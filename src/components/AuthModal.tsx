@@ -3,8 +3,10 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog, 
-  DialogContent, 
-  DialogClose 
+  DialogContent,
+  DialogClose,
+  DialogTitle,
+  DialogDescription 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,7 +72,7 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
         await signup(email, password);
         toast({
           title: "Welcome to Connectopia!",
-          description: "Your account has been created successfully."
+          description: "Your account has been created successfully. Please check your email to verify your account."
         });
         setSignupOpen(false);
       }
@@ -79,9 +81,10 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
       setEmail("");
       setPassword("");
     } catch (error) {
+      console.error(`${activeTab === 'signin' ? 'Login' : 'Signup'} error:`, error);
       toast({
         title: "Authentication Error",
-        description: (error as Error).message || "Failed to authenticate",
+        description: (error as Error).message || `Failed to ${activeTab === 'signin' ? 'sign in' : 'create account'}`,
         variant: "destructive",
       });
     }
@@ -91,6 +94,8 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
     <>
       <Dialog open={signinOpen} onOpenChange={setSigninOpen}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden border shadow-md bg-background/95 backdrop-blur-sm">
+          <DialogTitle className="sr-only">Sign In</DialogTitle>
+          <DialogDescription className="sr-only">Sign in to your account</DialogDescription>
           <div className="flex justify-end p-3">
             <DialogClose asChild>
               <Button
@@ -150,6 +155,8 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
       
       <Dialog open={signupOpen} onOpenChange={setSignupOpen}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden border shadow-md bg-background/95 backdrop-blur-sm">
+          <DialogTitle className="sr-only">Sign Up</DialogTitle>
+          <DialogDescription className="sr-only">Create a new account</DialogDescription>
           <div className="flex justify-end p-3">
             <DialogClose asChild>
               <Button
