@@ -3,109 +3,56 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { Video, VideoOff, Mic, MicOff, Phone } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export const VideoCallInterface = () => {
   const { user } = useAuth();
   const { 
-    isConnecting, isConnected, otherUserDisconnected, connect, disconnect, findNewPartner 
+    isConnecting, 
+    isConnected, 
+    otherUserDisconnected, 
+    localStream,
+    remoteStream,
+    isCameraOn,
+    isMicOn,
+    connect, 
+    disconnect, 
+    findNewPartner,
+    toggleCamera,
+    toggleMic
   } = useChat();
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const [isCameraOn, setIsCameraOn] = useState(true);
-  const [isMicOn, setIsMicOn] = useState(true);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   
-  // Initialize camera when component mounts
+  // Set up local video stream
   useEffect(() => {
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-        
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-        setLocalStream(stream);
-      } catch (error) {
-        console.error("Error accessing camera:", error);
-      }
-    };
-    
-    if (isConnected) {
-      startCamera();
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
     }
-    
-    return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [isConnected]);
+  }, [localStream]);
+  
+  // Set up remote video stream
+  useEffect(() => {
+    if (remoteStream && remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
   
   // Connect to chat when component mounts
   useEffect(() => {
-    if (!isConnected && !isConnecting) {
+    if (!isConnected && !isConnecting && user) {
       connect();
     }
     
     return () => {
-      disconnect();
+      if (isConnected) {
+        disconnect();
+      }
     };
-  }, []);
-  
-  // Mock remote video connection (in a real app this would be actual WebRTC)
-  useEffect(() => {
-    if (isConnected && remoteVideoRef.current) {
-      // This is just a placeholder - in a real implementation, 
-      // you would set up WebRTC peer connection here
-      const mockRemoteStream = async () => {
-        try {
-          // For demo purposes, we're just showing a copy of the local stream
-          // In a real app, this would be the peer's stream via WebRTC
-          if (localStream && remoteVideoRef.current) {
-            setTimeout(() => {
-              if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = localStream;
-              }
-            }, 2000);
-          }
-        } catch (error) {
-          console.error("Error with remote stream:", error);
-        }
-      };
-      
-      mockRemoteStream();
-    }
-  }, [isConnected, localStream]);
-  
-  const toggleCamera = () => {
-    if (localStream) {
-      const videoTracks = localStream.getVideoTracks();
-      videoTracks.forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsCameraOn(!isCameraOn);
-    }
-  };
-  
-  const toggleMic = () => {
-    if (localStream) {
-      const audioTracks = localStream.getAudioTracks();
-      audioTracks.forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsMicOn(!isMicOn);
-    }
-  };
+  }, [user]);
   
   const handleEndCall = () => {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-    }
     disconnect();
   };
   
