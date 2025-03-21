@@ -38,7 +38,7 @@ const Index = () => {
                 <Button 
                   size="lg" 
                   className="text-lg px-8 py-6"
-                  onClick={() => window.dialog_signup.showModal()}
+                  onClick={() => window.showSignUpModal()}
                 >
                   Join Connectopia <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -105,7 +105,7 @@ const Index = () => {
             ) : (
               <Button 
                 size="lg"
-                onClick={() => window.dialog_signin.showModal()}
+                onClick={() => window.showSignInModal()}
               >
                 Sign In to Start <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

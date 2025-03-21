@@ -1,16 +1,24 @@
 
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
 import { X } from "lucide-react";
 
 interface AuthModalProps {
   defaultTab?: 'signin' | 'signup';
+}
+
+// Define the global window interface extension for TypeScript
+declare global {
+  interface Window {
+    showSignInModal: () => void;
+    showSignUpModal: () => void;
+  }
 }
 
 export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
@@ -19,6 +27,20 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(defaultTab);
   const { login, signup } = useAuth();
   const { toast } = useToast();
+  
+  const signinDialogRef = useRef<HTMLDialogElement>(null);
+  const signupDialogRef = useRef<HTMLDialogElement>(null);
+  
+  // Expose modal show methods to window for global access
+  React.useEffect(() => {
+    window.showSignInModal = () => signinDialogRef.current?.showModal();
+    window.showSignUpModal = () => signupDialogRef.current?.showModal();
+    
+    return () => {
+      window.showSignInModal = undefined as any;
+      window.showSignUpModal = undefined as any;
+    };
+  }, []);
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -65,17 +87,14 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
   
   return (
     <>
-      <Dialog id="dialog_signin" className="bg-background/80 backdrop-blur-md">
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden border border-border rounded-xl">
+      <dialog ref={signinDialogRef} className="bg-background/80 backdrop-blur-md rounded-xl border border-border">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden border-none shadow-none bg-transparent">
           <div className="flex justify-end p-3">
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => {
-                const dialog = document.getElementById('dialog_signin') as HTMLDialogElement;
-                dialog.close();
-              }}
+              onClick={() => signinDialogRef.current?.close()}
             >
               <X size={18} />
             </Button>
@@ -155,19 +174,16 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
             </TabsContent>
           </Tabs>
         </DialogContent>
-      </Dialog>
+      </dialog>
       
-      <Dialog id="dialog_signup" className="bg-background/80 backdrop-blur-md">
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden border border-border rounded-xl">
+      <dialog ref={signupDialogRef} className="bg-background/80 backdrop-blur-md rounded-xl border border-border">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden border-none shadow-none bg-transparent">
           <div className="flex justify-end p-3">
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => {
-                const dialog = document.getElementById('dialog_signup') as HTMLDialogElement;
-                dialog.close();
-              }}
+              onClick={() => signupDialogRef.current?.close()}
             >
               <X size={18} />
             </Button>
@@ -175,10 +191,8 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
           <Tabs defaultValue="signup" className="w-full px-6 pb-8" value="signup">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="signin" onClick={() => {
-                const dialog1 = document.getElementById('dialog_signup') as HTMLDialogElement;
-                dialog1.close();
-                const dialog2 = document.getElementById('dialog_signin') as HTMLDialogElement;
-                dialog2.showModal();
+                signupDialogRef.current?.close();
+                signinDialogRef.current?.showModal();
               }}>Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
@@ -218,7 +232,7 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
             </TabsContent>
           </Tabs>
         </DialogContent>
-      </Dialog>
+      </dialog>
     </>
   );
 };

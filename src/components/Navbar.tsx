@@ -46,10 +46,10 @@ export const Navbar = () => {
               </>
             ) : (
               <div className="flex items-center space-x-4">
-                <Button variant="ghost" onClick={() => window.dialog_signin.showModal()}>
+                <Button variant="ghost" onClick={() => window.showSignInModal()}>
                   Sign In
                 </Button>
-                <Button variant="default" onClick={() => window.dialog_signup.showModal()}>
+                <Button variant="default" onClick={() => window.showSignUpModal()}>
                   Sign Up
                 </Button>
               </div>
@@ -102,7 +102,7 @@ export const Navbar = () => {
                   variant="default" 
                   className="w-full" 
                   onClick={() => {
-                    window.dialog_signin.showModal();
+                    window.showSignInModal();
                     setMobileMenuOpen(false);
                   }}
                 >
@@ -112,7 +112,7 @@ export const Navbar = () => {
                   variant="outline" 
                   className="w-full" 
                   onClick={() => {
-                    window.dialog_signup.showModal();
+                    window.showSignUpModal();
                     setMobileMenuOpen(false);
                   }}
                 >
