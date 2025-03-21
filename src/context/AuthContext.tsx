@@ -4,6 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 
+// Export the User type to resolve the TypeScript error
+export type { User };
+
 export type AppUser = {
   id: string;
   email: string;
