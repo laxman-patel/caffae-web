@@ -4,7 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "react-router-dom";
-import { ArrowRight, MessageCircle, Shield, Users } from "lucide-react";
+import { ArrowRight, Shield, Users, Video } from "lucide-react";
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
@@ -22,15 +22,15 @@ const Index = () => {
               Connect with someone new instantly
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Connectopia brings you face to face with someone new from anywhere in the world. Start meaningful conversations in seconds.
+              Connectopia brings you face to face with someone new from anywhere in the world. Start meaningful video calls in seconds.
             </p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-slide-up animation-delay-200">
             {isAuthenticated ? (
-              <Link to="/chat">
+              <Link to="/video-call">
                 <Button size="lg" className="text-lg px-8 py-6">
-                  Start Chatting <ArrowRight className="ml-2 h-5 w-5" />
+                  Start Video Call <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             ) : (
@@ -56,9 +56,9 @@ const Index = () => {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-background rounded-xl p-6 shadow-subtle transition-all hover:shadow-elevated animate-slide-up">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <MessageCircle className="h-6 w-6 text-primary" />
+                <Video className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Instant Connections</h3>
+              <h3 className="text-xl font-semibold mb-2">Instant Video Calls</h3>
               <p className="text-muted-foreground">
                 Connect instantly with people from around the world. No waiting, no searching.
               </p>
@@ -97,9 +97,9 @@ const Index = () => {
           
           <div className="pt-4">
             {isAuthenticated ? (
-              <Link to="/chat">
+              <Link to="/video-call">
                 <Button size="lg">
-                  Start Chatting Now <ArrowRight className="ml-2 h-5 w-5" />
+                  Start Video Call Now <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             ) : (

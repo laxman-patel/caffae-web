@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { UserAvatar } from "./UserAvatar";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Video } from "lucide-react";
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -28,9 +28,10 @@ export const Navbar = () => {
           <div className="hidden md:flex md:items-center md:space-x-6">
             {isAuthenticated ? (
               <>
-                <Link to="/chat">
+                <Link to="/video-call">
                   <Button variant="ghost" className="text-base font-medium transition-all hover:text-primary">
-                    Start Chatting
+                    <Video className="mr-2 h-5 w-5" />
+                    Start Video Call
                   </Button>
                 </Link>
                 <div className="flex items-center space-x-4">
@@ -80,9 +81,10 @@ export const Navbar = () => {
                   <UserAvatar user={user} />
                   <span className="mt-2 text-sm text-muted-foreground">{user?.email}</span>
                 </div>
-                <Link to="/chat" className="w-full" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/video-call" className="w-full" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="default" className="w-full">
-                    Start Chatting
+                    <Video className="mr-2 h-5 w-5" />
+                    Start Video Call
                   </Button>
                 </Link>
                 <Button 
