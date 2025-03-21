@@ -1,8 +1,8 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User } from "@/context/AuthContext";
+import { AppUser } from "@/context/AuthContext";
 
-export const UserAvatar = ({ user }: { user?: User | null }) => {
+export const UserAvatar = ({ user }: { user?: AppUser | null }) => {
   if (!user) return null;
   
   const initials = user.email ? user.email.charAt(0).toUpperCase() : "U";
