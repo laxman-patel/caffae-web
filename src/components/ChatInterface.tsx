@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,7 +54,7 @@ export const ChatInterface = () => {
           const responses = [
             "Hi there! How are you today?",
             "Nice to meet you! Where are you from?",
-            "What brings you to Connectopia?",
+            "What brings you to Caffae?",
             "Interesting! Tell me more about yourself.",
             "I'm enjoying this conversation. What do you like to do in your free time?"
           ];

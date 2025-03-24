@@ -1,12 +1,13 @@
-
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { Video, VideoOff, Mic, MicOff, Phone } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export const VideoCallInterface = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { 
     isConnecting, 
     isConnected, 
@@ -24,6 +25,7 @@ export const VideoCallInterface = () => {
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
   
   // Set up local video stream
   useEffect(() => {
@@ -38,11 +40,32 @@ export const VideoCallInterface = () => {
       remoteVideoRef.current.srcObject = remoteStream;
     }
   }, [remoteStream]);
+
+  // Handle connection state changes
+  useEffect(() => {
+    if (isConnected) {
+      toast({
+        title: "Connected",
+        description: "You are now connected with a stranger.",
+      });
+    }
+  }, [isConnected, toast]);
+
+  // Handle disconnection
+  useEffect(() => {
+    if (otherUserDisconnected) {
+      toast({
+        title: "Partner Disconnected",
+        description: "Your video call partner has disconnected.",
+        variant: "destructive",
+      });
+    }
+  }, [otherUserDisconnected, toast]);
   
   // Connect to chat when component mounts
   useEffect(() => {
-    if (!isConnected && !isConnecting && user) {
-      connect();
+    if (!isConnected && !isConnecting && user && !isInitializing) {
+      handleStartCall();
     }
     
     return () => {
@@ -50,7 +73,23 @@ export const VideoCallInterface = () => {
         disconnect();
       }
     };
-  }, [user]);
+  }, [user, isConnected, isConnecting, isInitializing]);
+  
+  const handleStartCall = async () => {
+    try {
+      setIsInitializing(true);
+      await connect();
+    } catch (error) {
+      console.error('Error starting call:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start video call. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsInitializing(false);
+    }
+  };
   
   const handleEndCall = () => {
     disconnect();
@@ -175,8 +214,12 @@ export const VideoCallInterface = () => {
               <Video className="h-10 w-10 text-primary/50" />
             </div>
             <p className="text-sm text-muted-foreground">Start a random video call</p>
-            <Button variant="default" onClick={connect}>
-              Start Call
+            <Button 
+              variant="default" 
+              onClick={handleStartCall}
+              disabled={isInitializing}
+            >
+              {isInitializing ? "Initializing..." : "Start Call"}
             </Button>
           </div>
         )}

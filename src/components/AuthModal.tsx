@@ -71,7 +71,7 @@ export const AuthModal = ({ defaultTab = 'signin' }: AuthModalProps) => {
       } else {
         await signup(email, password);
         toast({
-          title: "Welcome to Connectopia!",
+          title: "Welcome to Caffae!",
           description: "Your account has been created successfully. Please check your email to verify your account."
         });
         setSignupOpen(false);

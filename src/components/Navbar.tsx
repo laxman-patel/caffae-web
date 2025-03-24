@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { UserAvatar } from "./UserAvatar";
@@ -17,10 +16,7 @@ export const Navbar = () => {
           {/* Logo and Brand */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">C</span>
-              </div>
-              <span className="text-lg font-semibold tracking-tight">Connectopia</span>
+              <img src="/caffae.png" alt="Caffae Logo" className="h-24 w-auto" />
             </Link>
           </div>
 

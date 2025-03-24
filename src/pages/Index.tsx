@@ -19,11 +19,9 @@ const Index = () => {
         <div className="max-w-5xl mx-auto text-center space-y-8">
           <div className="space-y-4 animate-slide-up">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-              Connect with someone new instantly
-            </h1>
+            India’s First 1:1 Personalized Guidance App Unlocked!            </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Connectopia brings you face to face with someone new from anywhere in the world. Start meaningful video calls in seconds.
-            </p>
+            Bridging Aspirations to Achievements, <br /> Connect with Gurus on Caffae for Personalized Success.            </p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-slide-up animation-delay-200">
@@ -40,7 +38,7 @@ const Index = () => {
                   className="text-lg px-8 py-6"
                   onClick={() => window.showSignUpModal()}
                 >
-                  Join Connectopia <ArrowRight className="ml-2 h-5 w-5" />
+                  Join Caffae <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </>
             )}
@@ -51,7 +49,7 @@ const Index = () => {
       {/* Features Section */}
       <section className="py-16 px-4 bg-secondary/50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Why Choose Connectopia?</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Why Choose Caffae?</h2>
           
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-background rounded-xl p-6 shadow-subtle transition-all hover:shadow-elevated animate-slide-up">
@@ -118,14 +116,12 @@ const Index = () => {
       <footer className="py-8 px-4 border-t border-border">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center mb-4 md:mb-0">
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">C</span>
-            </div>
-            <span className="ml-2 text-lg font-semibold">Connectopia</span>
+          <img src="/caffae.png" alt="Caffae Logo" className="h-24 w-auto" />
+
           </div>
           
           <div className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} Connectopia. All rights reserved.
+            &copy; {new Date().getFullYear()} Caffae. All rights reserved.
           </div>
         </div>
       </footer>

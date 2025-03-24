@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { webRTCService } from '@/lib/webrtc';
@@ -14,11 +13,11 @@ interface ChatContextType {
   connectionState: RTCPeerConnectionState | null;
   isCameraOn: boolean;
   isMicOn: boolean;
-  connect: () => void;
-  disconnect: () => void;
-  findNewPartner: () => void;
-  toggleCamera: () => void;
-  toggleMic: () => void;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+  findNewPartner: () => Promise<void>;
+  toggleCamera: () => boolean;
+  toggleMic: () => boolean;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -32,7 +31,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [connectionState, setConnectionState] = useState<RTCPeerConnectionState | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
-  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -50,20 +48,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setIsConnecting(false);
         setIsConnected(true);
         setOtherUserDisconnected(false);
-        
-        toast({
-          title: "Connected",
-          description: "You are now in a video call with a stranger.",
-        });
       } else if (state === 'disconnected' || state === 'failed' || state === 'closed') {
         setIsConnected(false);
         setOtherUserDisconnected(true);
-        
-        toast({
-          title: "Disconnected",
-          description: "The other person has disconnected.",
-          variant: "destructive",
-        });
       }
     });
     
@@ -71,7 +58,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       disconnect();
     };
-  }, [toast]);
+  }, []);
   
   const generateRoomId = () => {
     return Math.random().toString(36).substring(2, 15);
@@ -108,7 +95,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       
       // Find or create a room
       const roomId = await findAvailableRoom();
-      setCurrentRoomId(roomId);
       
       // Join the room
       await webRTCService.joinRoom(roomId);
@@ -137,7 +123,6 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       setOtherUserDisconnected(false);
       setLocalStream(null);
       setRemoteStream(null);
-      setCurrentRoomId(null);
       
       toast({
         title: "Disconnected",
@@ -156,11 +141,13 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const toggleCamera = () => {
     const isEnabled = webRTCService.toggleCamera();
     setIsCameraOn(isEnabled);
+    return isEnabled;
   };
   
   const toggleMic = () => {
     const isEnabled = webRTCService.toggleMicrophone();
     setIsMicOn(isEnabled);
+    return isEnabled;
   };
   
   const value = {
