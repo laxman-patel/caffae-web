@@ -1,6 +1,5 @@
 import { Navbar } from "@/components/Navbar";
-import { VideoCallInterface } from "@/components/VideoCallInterface";
-import { ChatProvider } from "@/context/ChatContext";
+import VideoCallInterface from "@/components/VideoCallInterface";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
@@ -26,9 +25,7 @@ const VideoCall = () => {
       <Navbar />
       <div className="flex-1 pt-16 flex flex-col">
         <div className="flex-1 w-full mx-auto px-10 py-6 flex flex-col rounded-xl my-6 shadow-subtle h-full  bg-background">
-          <ChatProvider>
-            <VideoCallInterface />
-          </ChatProvider>
+          <VideoCallInterface />
         </div>
       </div>
     </div>

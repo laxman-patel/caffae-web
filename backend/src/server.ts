@@ -1,179 +1,317 @@
-import express from 'express';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import cors from 'cors';
-import { createClient } from '@supabase/supabase-js';
+// src/server.ts
+import http from "http";
+import { Server, Socket } from "socket.io";
+import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
-const app = express();
+// --- Type Definitions ---
 
-// Configure CORS for Express
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  methods: ['GET', 'POST'],
-  credentials: true
-}));
+type SocketId = string;
+type Interest = string;
+type UserStatus = "idle" | "waiting" | "in-call";
 
-const httpServer = createServer(app);
+interface UserData {
+  interests: Set<Interest>;
+  status: UserStatus;
+  peerId?: SocketId;
+}
 
-// Initialize Socket.IO with CORS configuration
-const io = new Server(httpServer, {
+// Define payloads for client-to-server events
+interface ClientToServerEvents extends DefaultEventsMap {
+  "find-match": (payload: { interests: string[] }) => void;
+  "cancel-search": () => void;
+  offer: (payload: { sdp: unknown }) => void; // Use unknown for safety, validate/cast if needed
+  answer: (payload: { sdp: unknown }) => void;
+  "ice-candidate": (payload: { candidate: unknown }) => void;
+  "disconnect-call": () => void;
+}
+
+// Define payloads for server-to-client events
+interface ServerToClientEvents extends DefaultEventsMap {
+  "match-found": (payload: {
+    peerId: SocketId;
+    caller: boolean;
+    peerInterests: string[];
+  }) => void;
+  offer: (payload: { sender: SocketId; sdp: unknown }) => void;
+  answer: (payload: { sender: SocketId; sdp: unknown }) => void;
+  "ice-candidate": (payload: { sender: SocketId; candidate: unknown }) => void;
+  "user-disconnected": (payload: { peerId: SocketId }) => void;
+  // 'error-message': (message: string) => void; // Example error event
+}
+
+// --- Server Setup ---
+
+const httpServer = http.createServer();
+// Strongly type the Socket.IO Server instance
+const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST'],
-    credentials: true,
-    allowedHeaders: ['*']
+    origin: "*", // Restrict in production
+    methods: ["GET", "POST"],
   },
-  transports: ['websocket', 'polling']
 });
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://zpuhyuvifzcrquihmxax.supabase.co',
-  process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwdWh5dXZpZnpjcnF1aWhteGF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1OTI4ODksImV4cCI6MjA1ODE2ODg4OX0.X1EDX94UayTTAhiDjzLemhSpPfG-mF862o0giqoecXQ'
+const PORT: number = 8088;
+
+// --- Data Structures ---
+
+const users = new Map<SocketId, UserData>();
+const waitingUsers = new Map<Interest, Set<SocketId>>();
+
+console.log(`Socket.IO Signaling Server starting on port ${PORT}`);
+
+// --- Connection Handler ---
+
+// Use the strongly typed Server instance for 'io' and Socket
+io.on(
+  "connection",
+  (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
+    const userId: SocketId = socket.id;
+    console.log(`Client connected: ${userId}`);
+
+    // Initialize user data
+    users.set(userId, { interests: new Set(), status: "idle" });
+
+    // --- Socket Event Handlers ---
+
+    socket.on("find-match", (payload) => {
+      // Basic validation (TypeScript helps, but runtime checks are good)
+      if (
+        !payload ||
+        !Array.isArray(payload.interests) ||
+        payload.interests.some((i) => typeof i !== "string")
+      ) {
+        console.error(`Invalid 'find-match' payload from ${userId}:`, payload);
+        // socket.emit('error-message', 'Invalid interests format.');
+        return;
+      }
+
+      const currentUser = users.get(userId);
+      if (!currentUser) {
+        console.error(`User ${userId} not found during find-match.`);
+        return;
+      }
+
+      // Ensure interests are strings before creating the Set
+      currentUser.interests = new Set(
+        payload.interests.filter((i) => typeof i === "string")
+      );
+      currentUser.status = "waiting";
+      currentUser.peerId = undefined;
+      console.log(
+        `User ${userId} is waiting with interests:`,
+        Array.from(currentUser.interests)
+      );
+      findMatchForUser(userId);
+    });
+
+    socket.on("cancel-search", () => {
+      const currentUser = users.get(userId);
+      if (currentUser && currentUser.status === "waiting") {
+        removeFromWaiting(userId);
+        currentUser.status = "idle";
+        console.log(`User ${userId} cancelled search.`);
+      }
+    });
+
+    // --- WebRTC Signaling ---
+
+    socket.on("offer", (payload) => {
+      const currentUser = users.get(userId);
+      // Check if user exists and is currently paired
+      if (!currentUser || !currentUser.peerId) {
+        console.warn(
+          `User ${userId} tried to send offer but is not in a call.`
+        );
+        return;
+      }
+      console.log(`Relaying 'offer' from ${userId} to ${currentUser.peerId}`);
+      // Emit to the specific peer socket
+      io.to(currentUser.peerId).emit("offer", {
+        sender: userId,
+        sdp: payload.sdp, // Forward the payload directly
+      });
+    });
+
+    socket.on("answer", (payload) => {
+      const currentUser = users.get(userId);
+      if (!currentUser || !currentUser.peerId) {
+        console.warn(
+          `User ${userId} tried to send answer but is not in a call.`
+        );
+        return;
+      }
+      console.log(`Relaying 'answer' from ${userId} to ${currentUser.peerId}`);
+      io.to(currentUser.peerId).emit("answer", {
+        sender: userId,
+        sdp: payload.sdp,
+      });
+    });
+
+    socket.on("ice-candidate", (payload) => {
+      const currentUser = users.get(userId);
+      if (!currentUser || !currentUser.peerId) {
+        // This can happen normally if candidates arrive after disconnect
+        // console.warn(`User ${userId} tried to send ice-candidate but is not in a call.`);
+        return;
+      }
+      // console.log(`Relaying 'ice-candidate' from ${userId} to ${currentUser.peerId}`); // Verbose
+      io.to(currentUser.peerId).emit("ice-candidate", {
+        sender: userId,
+        candidate: payload.candidate,
+      });
+    });
+
+    // --- Disconnection ---
+
+    socket.on("disconnect-call", () => {
+      handleDisconnect(userId, true); // Intentional disconnect
+    });
+
+    socket.on("disconnect", (reason: string) => {
+      console.log(`Client disconnected: ${userId}, Reason: ${reason}`);
+      handleDisconnect(userId, false); // Unintentional disconnect
+      users.delete(userId); // Clean up user from main map
+    });
+
+    socket.on("connect_error", (err: Error) => {
+      console.error(`Connection Error for socket ${userId}: ${err.message}`);
+      handleDisconnect(userId, false);
+      users.delete(userId);
+    });
+  }
 );
 
-// Store active rooms and their participants
-const activeRooms = new Map<string, Set<string>>();
+// --- Helper Functions (Typed) ---
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+function findMatchForUser(userId: SocketId): void {
+  const currentUser = users.get(userId);
+  // Guard clauses for type safety and logic
+  if (!currentUser || currentUser.status !== "waiting") {
+    console.log(`User ${userId} is not waiting, cannot find match.`);
+    return;
+  }
 
-  socket.on('join-room', async (roomId: string) => {
-    try {
-      // Join the socket room
-      socket.join(roomId);
+  console.log(`Attempting to find match for ${userId}`);
+  let matchedUserId: SocketId | null = null;
 
-      // Get or create room participants set
-      if (!activeRooms.has(roomId)) {
-        activeRooms.set(roomId, new Set());
-      }
-      const participants = activeRooms.get(roomId)!;
-
-      // Add current user to participants
-      participants.add(socket.id);
-
-      // If this is the second participant, notify both users
-      if (participants.size === 2) {
-        const participantsArray = Array.from(participants);
-        io.to(roomId).emit('room-ready', {
-          initiator: participantsArray[0],
-          peer: participantsArray[1],
-        });
-      }
-
-      // Update room status in database
-      await supabase
-        .from('video_rooms')
-        .upsert({
-          room_id: roomId,
-          status: participants.size === 2 ? 'connected' : 'waiting',
-          last_active: new Date().toISOString(),
-        });
-
-    } catch (error) {
-      console.error('Error joining room:', error);
-      socket.emit('error', { message: 'Failed to join room' });
-    }
-  });
-
-  socket.on('offer', (offer: { type: string; sdp: string }, roomId: string) => {
-    socket.to(roomId).emit('offer', offer);
-  });
-
-  socket.on('answer', (answer: { type: string; sdp: string }, roomId: string) => {
-    socket.to(roomId).emit('answer', answer);
-  });
-
-  socket.on('ice-candidate', (candidate: { candidate: string; sdpMid?: string; sdpMLineIndex?: number }, roomId: string) => {
-    socket.to(roomId).emit('ice-candidate', candidate);
-  });
-
-  socket.on('leave-room', async (roomId: string) => {
-    try {
-      // Remove user from room participants
-      const participants = activeRooms.get(roomId);
-      if (participants) {
-        participants.delete(socket.id);
-        
-        // If room is empty, remove it
-        if (participants.size === 0) {
-          activeRooms.delete(roomId);
-        } else {
-          // Notify remaining participants
-          socket.to(roomId).emit('user-disconnected');
+  // Iterate through interests to find a potential match
+  for (const interest of currentUser.interests) {
+    const potentialPeers = waitingUsers.get(interest);
+    if (potentialPeers) {
+      for (const potentialPeerId of potentialPeers) {
+        if (potentialPeerId !== userId) {
+          const potentialPeer = users.get(potentialPeerId);
+          // Ensure the potential peer is valid and waiting
+          if (potentialPeer && potentialPeer.status === "waiting") {
+            matchedUserId = potentialPeerId;
+            break; // Found a match
+          }
         }
       }
- 
-      // Update room status in database
-      await supabase
-        .from('video_rooms')
-        .update({
-          status: 'closed',
-          last_active: new Date().toISOString(),
-        })
-        .eq('room_id', roomId);
-
-      // Leave the socket room
-      socket.leave(roomId);
-    } catch (error) {
-      console.error('Error leaving room:', error);
     }
+    if (matchedUserId) break; // Stop searching once a match is found
+  }
+
+  if (matchedUserId) {
+    const peerUser = users.get(matchedUserId);
+    // This check is important due to potential race conditions
+    if (!peerUser || peerUser.status !== "waiting") {
+      console.warn(
+        `Match found (${matchedUserId}) but peer is no longer waiting. Aborting match.`
+      );
+      // Put the current user back into the waiting pool if they weren't removed yet
+      currentUser.status = "waiting";
+      addToWaiting(userId, currentUser.interests);
+      return;
+    }
+
+    console.log(`Match found: ${userId} <-> ${matchedUserId}`);
+
+    // Update states and link peers
+    currentUser.status = "in-call";
+    currentUser.peerId = matchedUserId;
+    peerUser.status = "in-call";
+    peerUser.peerId = userId;
+
+    // Remove both from the waiting pool
+    removeFromWaiting(userId);
+    removeFromWaiting(matchedUserId);
+
+    // Notify clients about the match
+    io.to(userId).emit("match-found", {
+      peerId: matchedUserId,
+      caller: true, // This user will initiate the offer
+      peerInterests: Array.from(peerUser.interests),
+    });
+    io.to(matchedUserId).emit("match-found", {
+      peerId: userId,
+      caller: false, // This user will wait for the offer
+      peerInterests: Array.from(currentUser.interests),
+    });
+  } else {
+    console.log(
+      `No suitable match found for ${userId}, adding to waiting pool.`
+    );
+    addToWaiting(userId, currentUser.interests);
+  }
+}
+
+function addToWaiting(userId: SocketId, interests: Set<Interest>): void {
+  interests.forEach((interest) => {
+    if (!waitingUsers.has(interest)) {
+      waitingUsers.set(interest, new Set<SocketId>());
+    }
+    // Add user only if the set exists (TypeScript type guard)
+    waitingUsers.get(interest)?.add(userId);
   });
+}
 
-  socket.on('disconnect', async () => {
-    console.log('User disconnected:', socket.id);
-
-    // Find and clean up any rooms this user was in
-    for (const [roomId, participants] of activeRooms.entries()) {
-      if (participants.has(socket.id)) {
-        participants.delete(socket.id);
-        
-        if (participants.size === 0) {
-          activeRooms.delete(roomId);
-        } else {
-          io.to(roomId).emit('user-disconnected');
-        }
-
-        // Update room status in database
-        await supabase
-          .from('video_rooms')
-          .update({
-            status: 'closed',
-            last_active: new Date().toISOString(),
-          })
-          .eq('room_id', roomId);
+function removeFromWaiting(userId: SocketId): void {
+  waitingUsers.forEach((userIdsSet, interest) => {
+    if (userIdsSet.has(userId)) {
+      userIdsSet.delete(userId);
+      // Clean up empty interest sets from the map
+      if (userIdsSet.size === 0) {
+        waitingUsers.delete(interest);
       }
     }
   });
-});
+}
 
-// Clean up inactive rooms periodically
-setInterval(async () => {
-  const inactiveThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes
+function handleDisconnect(userId: SocketId, intentional: boolean): void {
+  console.log(`Handling disconnect for ${userId}. Intentional: ${intentional}`);
+  const currentUser = users.get(userId);
+  if (!currentUser) return; // User already removed or never existed
 
-  for (const [roomId, participants] of activeRooms.entries()) {
-    const { data: room } = await supabase
-      .from('video_rooms')
-      .select('last_active')
-      .eq('room_id', roomId)
-      .single();
+  // If user was waiting, remove them from the pool
+  if (currentUser.status === "waiting") {
+    removeFromWaiting(userId);
+  }
 
-    if (room && new Date(room.last_active) < inactiveThreshold) {
-      activeRooms.delete(roomId);
-      io.to(roomId).emit('room-closed');
-      
-      await supabase
-        .from('video_rooms')
-        .update({
-          status: 'closed',
-          last_active: new Date().toISOString(),
-        })
-        .eq('room_id', roomId);
+  // If user was in a call, notify the peer
+  const peerId = currentUser.peerId;
+  if (currentUser.status === "in-call" && peerId) {
+    const peerUser = users.get(peerId);
+    if (peerUser) {
+      console.log(`Notifying peer ${peerId} about disconnection of ${userId}`);
+      // Reset peer's state
+      peerUser.peerId = undefined;
+      peerUser.status = "idle"; // Set peer back to idle state
+      // Notify the peer client
+      io.to(peerId).emit("user-disconnected", { peerId: userId });
+
+      // Optional: Try finding a new match for the remaining peer?
+      // findMatchForUser(peerId);
     }
   }
-}, 60 * 1000); // Check every minute
 
-const PORT = process.env.PORT || 3001;
+  // Reset the disconnecting user's state locally before final deletion in the main handler
+  currentUser.status = "idle";
+  currentUser.peerId = undefined;
+}
+
+// --- Start Server ---
+
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); 
+  console.log(`HTTP server listening on port ${PORT}`);
+});
