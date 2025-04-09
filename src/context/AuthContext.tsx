@@ -158,7 +158,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         options: {
           // Supabase redirects back here after Google auth
           // Ensure this matches URL Configuration in Supabase settings
-          redirectTo: window.location.origin,
+          redirectTo:
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1"
+              ? window.location.origin
+              : "https://app.caffae.in",
           // Optional: Add scopes if needed
           // queryParams: { access_type: 'offline', prompt: 'consent' },
         },
